@@ -8,6 +8,7 @@ public class MainWindow extends JFrame {
 
     public MainWindow() throws HeadlessException {
         drawPanel = new DrawPanel();
+        drawPanel.setFocusable(true);
         this.add(drawPanel);
     }
 }
