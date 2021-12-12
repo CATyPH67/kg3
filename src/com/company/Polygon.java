@@ -6,7 +6,7 @@ import java.util.List;
 
 public class Polygon {
     private ArrayList<RealPoint> points = new ArrayList<>();
-    private int r;
+    private double r;
 
     public Polygon(RealPoint p) {
         points.add(p);
@@ -23,11 +23,11 @@ public class Polygon {
         return points;
     }
 
-    public int getR() {
+    public double getR() {
         return r;
     }
 
-    public void setR(int r) {
+    public void setR(double r) {
         this.r = r;
     }
 }

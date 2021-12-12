@@ -18,7 +18,7 @@ public class DrawPanel extends JPanel implements MouseListener, MouseMotionListe
     private RealPoint editingPoint = null;
 
     public DrawPanel() {
-        sc = new ScreenConverter(-2, 2, 4, 4, 800, 600);
+        sc = new ScreenConverter(0, 0, 1000, 1000, 800, 600);
         this.addMouseListener(this);
         this.addMouseMotionListener(this);
         this.addMouseWheelListener(this);
@@ -37,7 +37,7 @@ public class DrawPanel extends JPanel implements MouseListener, MouseMotionListe
         Graphics2D g = bi.createGraphics();
 
         g.setColor(Color.WHITE);
-        g.fillRect(0, 0, getWidth(), getHeight());
+        g.fillRect(1, 1, getWidth(), getHeight());
         g.setColor(Color.BLACK);
 
         for (Polygon polygon : polygons) {
@@ -81,8 +81,9 @@ public class DrawPanel extends JPanel implements MouseListener, MouseMotionListe
     private static void drawPolygon(Graphics2D g, ScreenConverter sc, Polygon polygon) {
         ArrayList<RealPoint> points = polygon.getPoints();
         if (points.size() > 1) {
-            int r = polygon.getR();
-            if(r == 0) {
+            double r = sc.rValue2s(polygon.getR());
+//            double r = polygon.getR();
+            if (r < 1) {
                 ScreenPoint p1 = sc.r2s(points.get(0));
                 ScreenPoint p2;
                 for (int i = 1; i < points.size(); i++) {
@@ -93,47 +94,65 @@ public class DrawPanel extends JPanel implements MouseListener, MouseMotionListe
                 p2 = sc.r2s(points.get(0));
                 g.drawLine(p1.getX(), p1.getY(), p2.getX(), p2.getY());
             } else {
+                ScreenLine sLine;
                 ScreenPoint p1 = sc.r2s(points.get(0));
                 ScreenPoint p2 = sc.r2s(points.get(1));
                 ScreenPoint p3 = sc.r2s(points.get(2));
                 Arch arc = findArc(sc, p1, p2, p3, r, g);
-                int touchPrevX = arc.getTouchX2();
-                int touchPrevY = arc.getTouchY2();
-                int touchPrevX1 = arc.getTouchX1();
-                int touchPrevY1 = arc.getTouchY1();
+                ScreenPoint arcPoint1 = new ScreenPoint(arc.getTouchX1(), arc.getTouchY1());
+                ScreenPoint arcPoint2 = new ScreenPoint(arc.getTouchX2(), arc.getTouchY2());
+                ScreenPoint arcPoint3;
+                ScreenPoint arcPoint4;
                 g.drawArc(arc.getX(), arc.getY(), arc.getWidth(), arc.getHeight(), arc.getStartAngle(), arc.getArcAngle());
+
                 for (int i = 3; i < points.size(); i++) {
                     p1 = sc.r2s(points.get(i - 2));
                     p2 = sc.r2s(points.get(i - 1));
                     p3 = sc.r2s(points.get(i));
                     arc = findArc(sc, p1, p2, p3, r, g);
-                    g.drawLine(arc.getTouchX1(), arc.getTouchY1(), touchPrevX, touchPrevY);
+                    arcPoint3 = new ScreenPoint(arc.getTouchX1(), arc.getTouchY1());
+                    arcPoint4 = new ScreenPoint(arc.getTouchX2(), arc.getTouchY2());
+                    sLine = findNearestPointsArc(arcPoint1, arcPoint2, arcPoint3, arcPoint4);
+                    g.drawLine(sLine.getP1().getX(), sLine.getP1().getY(), sLine.getP2().getX(), sLine.getP2().getY());
                     g.drawArc(arc.getX(), arc.getY(), arc.getWidth(), arc.getHeight(), arc.getStartAngle(), arc.getArcAngle());
-                    touchPrevX = arc.getTouchX2();
-                    touchPrevY = arc.getTouchY2();
+                    arcPoint1 = new ScreenPoint(arc.getTouchX1(), arc.getTouchY1());
+                    arcPoint2 = new ScreenPoint(arc.getTouchX2(), arc.getTouchY2());
                 }
-                p1 = p2;
-                p2 = p3;
-                p3 = sc.r2s(points.get(0));
-                arc = findArc(sc, p1, p2, p3, r, g);
-                g.drawLine(arc.getTouchX1(), arc.getTouchY1(), touchPrevX, touchPrevY);
-                g.drawArc(arc.getX(), arc.getY(), arc.getWidth(), arc.getHeight(), arc.getStartAngle(), arc.getArcAngle());
-                touchPrevX = arc.getTouchX2();
-                touchPrevY = arc.getTouchY2();
-                p1 = p2;
-                p2 = p3;
-                p3 = sc.r2s(points.get(1));
-                arc = findArc(sc, p1, p2, p3, r, g);
-                g.drawLine(arc.getTouchX1(), arc.getTouchY1(), touchPrevX, touchPrevY);
-                g.drawArc(arc.getX(), arc.getY(), arc.getWidth(), arc.getHeight(), arc.getStartAngle(), arc.getArcAngle());
-                touchPrevX = arc.getTouchX2();
-                touchPrevY = arc.getTouchY2();
-                g.drawLine(touchPrevX1, touchPrevY1, touchPrevX, touchPrevY);
+                for (int i = 0; i < 3; i++) {
+                    p1 = p2;
+                    p2 = p3;
+                    p3 = sc.r2s(points.get(i));
+                    arc = findArc(sc, p1, p2, p3, r, g);
+                    arcPoint3 = new ScreenPoint(arc.getTouchX1(), arc.getTouchY1());
+                    arcPoint4 = new ScreenPoint(arc.getTouchX2(), arc.getTouchY2());
+                    sLine = findNearestPointsArc(arcPoint1, arcPoint2, arcPoint3, arcPoint4);
+                    g.drawLine(sLine.getP1().getX(), sLine.getP1().getY(), sLine.getP2().getX(), sLine.getP2().getY());
+                    g.drawArc(arc.getX(), arc.getY(), arc.getWidth(), arc.getHeight(), arc.getStartAngle(), arc.getArcAngle());
+                    arcPoint1 = new ScreenPoint(arc.getTouchX1(), arc.getTouchY1());
+                    arcPoint2 = new ScreenPoint(arc.getTouchX2(), arc.getTouchY2());
+                }
             }
         }
     }
 
-    private static Arch findArc(ScreenConverter sc, ScreenPoint p1, ScreenPoint p2, ScreenPoint p3, int r, Graphics g) {
+    private static ScreenLine findNearestPointsArc(ScreenPoint p1, ScreenPoint p2, ScreenPoint p3, ScreenPoint p4) {
+        double d1 = findDistance(p1, p3);
+        double d2 = findDistance(p1, p4);
+        double d3 = findDistance(p2, p3);
+        double d4 = findDistance(p2, p4);
+        double min = Math.min(d1, Math.min(d2, Math.min(d3, d4)));
+        if (d1 == min) {
+            return new ScreenLine(p1, p3);
+        } else if (d2 == min) {
+            return new ScreenLine(p1, p4);
+        } if (d3 == min) {
+            return new ScreenLine(p2, p3);
+        } else {
+            return new ScreenLine(p2, p4);
+        }
+    }
+
+    private static Arch findArc(ScreenConverter sc, ScreenPoint p1, ScreenPoint p2, ScreenPoint p3, double r, Graphics g) {
         int x, y, startAngle, arcAngle, touchX1, touchY1, touchX2, touchY2;
         double x0 = p2.getX();
         double y0 = p2.getY();
@@ -147,13 +166,40 @@ public class DrawPanel extends JPanel implements MouseListener, MouseMotionListe
         double b1 = x1 - x0;
         double a2 = y2 - y3;
         double b2 = x3 - x2;
-        double cosA = b1 / Math.sqrt(b1 * b1 + a1 * a1);
-        double sinA = Math.sqrt(1 - cosA * cosA);
-        double r1 = r / sinA;
-        cosA = b2 / Math.sqrt(b2 * b2 + a2 * a2);
-        sinA = Math.sqrt(1 - cosA * cosA);
-        double r2 = r / sinA;
-        if (((y2 <= y1) && (y2 <= y3)) || ((y2 >= y1) && (y2 >= y3))) {
+        double cosA1 = b1 / Math.sqrt(b1 * b1 + a1 * a1);
+        double sinA1 = Math.sqrt(1 - cosA1 * cosA1);
+        double r1;
+        double cosA2 = b2 / Math.sqrt(b2 * b2 + a2 * a2);
+        double sinA2 = Math.sqrt(1 - cosA2 * cosA2);
+        double r2;
+
+        if (sinA1 == 0) {
+            r1 = 0;
+            if ((y2 < y1) || (y2 < y3)) {
+                y0 += r;
+                y1 += r;
+            } else if ((y2 > y1) || (y2 > y3)) {
+                y0 -= r;
+                y1 -= r;
+            }
+        } else {
+            r1 = r / Math.abs(sinA1);
+        }
+
+        if (sinA2 == 0) {
+            r2 = 0;
+            if ((y2 < y1) || (y2 < y3)) {
+                y2 += r;
+                y3 += r;
+            } else if ((y2 > y1) || (y2 > y3)) {
+                y2 -= r;
+                y3 -= r;
+            }
+        } else {
+            r2 = r / Math.abs(sinA2);
+        }
+
+        if (((y2 < y1) && (y2 < y3)) || ((y2 > y1) && (y2 > y3)) && (((x2 > x1) && (x2 < x3)) || ((x2 < x1) && (x2 > x3)))) {
             if (x1 < x3) {
                 x0 += r1;
                 x1 += r1;
@@ -166,15 +212,43 @@ public class DrawPanel extends JPanel implements MouseListener, MouseMotionListe
                 x3 += r2;
             }
         } else if ((x2 <= x1) && (x2 <= x3)) {
-            x0 += r1;
-            x1 += r1;
-            x2 += r2;
-            x3 += r2;
+            if (((y2 > y1) && (y2 > y3)) || ((y2 < y1) && (y2 < y3))) {
+                if (y1 > y3) {
+                    x0 -= r1;
+                    x1 -= r1;
+                    x2 += r2;
+                    x3 += r2;
+                } else {
+                    x0 += r1;
+                    x1 += r1;
+                    x2 -= r2;
+                    x3 -= r2;
+                }
+            } else {
+                x0 += r1;
+                x1 += r1;
+                x2 += r2;
+                x3 += r2;
+            }
         } else if ((x2 >= x1) && (x2 >= x3)) {
-            x0 -= r1;
-            x1 -= r1;
-            x2 -= r2;
-            x3 -= r2;
+            if (((y2 > y1) && (y2 > y3)) || ((y2 < y1) && (y2 < y3))) {
+                if (y1 > y3) {
+                    x0 += r1;
+                    x1 += r1;
+                    x2 -= r2;
+                    x3 -= r2;
+                } else {
+                    x0 -= r1;
+                    x1 -= r1;
+                    x2 += r2;
+                    x3 += r2;
+                }
+            } else {
+                x0 -= r1;
+                x1 -= r1;
+                x2 -= r2;
+                x3 -= r2;
+            }
         }
         a1 = y0 - y1;
         b1 = x1 - x0;
@@ -190,27 +264,43 @@ public class DrawPanel extends JPanel implements MouseListener, MouseMotionListe
         y2 = p2.getY();
 
         double l = findDistance(new ScreenPoint(x, y), p2);
-        double d = Math.sqrt(l * l - r * r);
-        double cs = (x - x2) / l;
-        double u1;
-        if (y < y2) {
-            u1 = Math.acos(cs);
+        if (l != 0) {
+            double d = Math.sqrt(l * l - r * r);
+            double cs = (x - x2) / l;
+            double u1;
+            if (y < y2) {
+                u1 = Math.acos(cs);
+            } else {
+                u1 = 2 * Math.PI - Math.acos(cs);
+            }
+            cs = d / l;
+            double u2 = Math.acos(cs);
+            double u = u1 - u2;
+            touchX1 = (int)(x2 + d * Math.cos(u));
+            touchY1 = (int)(y2 - d * Math.sin(u));
+            u = u1 + u2;
+            touchX2 = (int)(x2 + d * Math.cos(u));
+            touchY2 = (int)(y2 - d * Math.sin(u));
         } else {
-            u1 = 2 * Math.PI - Math.acos(cs);
+            touchY1 = touchY2 = y;
+            touchX1 = touchX2 = x;
         }
-        cs = d / l;
-        double u2 = Math.acos(cs);
-        double u = u1 - u2;
-        touchX1 = (int)(x2 + d * Math.cos(u));
-        touchY1 = (int)(y2 - d * Math.sin(u));
-        u = u1 + u2;
-        touchX2 = (int)(x2 + d * Math.cos(u));
-        touchY2 = (int)(y2 - d * Math.sin(u));
+
+//        int r = (int)Math.sqrt((x1-x0)*(x1-x0) + (y1-y0)*(y1-y0));
+//        int x = x0-r;
+//        int y = y0-r;
+//        int width = 2*r;
+//        int height = 2*r;
+//        int startAngle = (int) (180/Math.PI*atan2(y1-y0, x1-x0));
+//        int endAngle = (int) (180/Math.PI*atan2(y2-y0, x2-x0));
 
         startAngle = (int)Math.toDegrees(Math.atan2(y - touchY1, touchX1 - x));
         arcAngle = (int)Math.toDegrees(Math.atan2(y - touchY2, touchX2 - x));
 
-        return new Arch(x - r, y - r, r * 2, r * 2, startAngle, (int)angleDiff(startAngle, arcAngle),
+//        startAngle = (int) (180/Math.PI*Math.atan2(touchY1-y, touchX1-x));
+//        arcAngle = (int) (180/Math.PI*Math.atan2(touchY2-y, touchX2-x));
+
+        return new Arch((int)(x - r), (int)(y - r), (int)(r * 2), (int)(r * 2), startAngle, (int)angleDiff(startAngle, arcAngle),
                 touchX1, touchY1, touchX2, touchY2);
     }
 
@@ -368,7 +458,8 @@ public class DrawPanel extends JPanel implements MouseListener, MouseMotionListe
         ScreenPoint currentPoint = new ScreenPoint(e.getX(), e.getY());
         if (SwingUtilities.isMiddleMouseButton(e)) {
             if (editingPolygon != null) {
-                int r = (int)findDistance(firstPoint, currentPoint) - DELTA;
+                double r = sc.sValue2r(findDistance(firstPoint, currentPoint) - DELTA);
+//                double r = findDistance(firstPoint, currentPoint) - DELTA;
                 if (r > 0) {
                     editingPolygon.setR(r);
                 } else {

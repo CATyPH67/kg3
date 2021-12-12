@@ -8,7 +8,7 @@ public class ScreenConverter {
         this.cx = cx;
         this.cy = cy;
         this.rw = rw;
-        this.rh = rh;
+        this.rh = rw * sh / sw;
         this.sw = sw;
         this.sh = sh;
     }
@@ -25,6 +25,14 @@ public class ScreenConverter {
         return new RealPoint(x, y);
     }
 
+    public double rValue2s(double value) {
+        return value / rw * sw;
+    }
+
+    public double sValue2r(double value) {
+        return value * rw / sw;
+    }
+
     public void moveCorner(RealPoint delta) {
         cx += delta.getX();
         cy += delta.getY();
@@ -36,7 +44,7 @@ public class ScreenConverter {
         cx += (rw - newRW) / 2;
         cy += (newRH - rh) / 2;
         rw = newRW;
-        rh = newRH;
+        rh = newRW * sh / sw;
     }
 
     public double getCx() {
